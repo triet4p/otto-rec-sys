@@ -1,0 +1,39 @@
+[project]
+name = "otto-rec-sys"
+version = "0.1.0"
+description = "Local dev setup for Otto Rec sys"
+authors = [
+    { name = "Triet", email = "you@example.com" }
+]
+requires-python = ">=3.11"
+
+# -------------------
+# Mypy configuration
+# -------------------
+[tool.mypy]
+mypy_path = "./stubs"        # nơi chứa stub (vd: stubs/cudf/)
+ignore_missing_imports = true
+python_version = "3.11"
+warn_unused_ignores = true
+strict_optional = true
+
+# -------------------
+# (Tùy chọn) Black formatting
+# -------------------
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+# -------------------
+# (Tùy chọn) Ruff linter
+# -------------------
+[tool.ruff]
+line-length = 88
+select = ["E", "F"]
+ignore = ["E501"]
+
+# -------------------
+# (Tùy chọn) isort
+# -------------------
+[tool.isort]
+profile = "black"

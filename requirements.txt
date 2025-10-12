@@ -1,0 +1,7 @@
+numpy
+pandas
+polars
+tqdm
+lightgbm
+mypy
+cudf
