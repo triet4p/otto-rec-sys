@@ -361,6 +361,6 @@ def generate_candidate(file_pattern: str,
     
     calculate_cart_order_matrix(**carts_orders_params)
     calculate_buy2buy_matrix(**buy2buy_params)
-    calculate_clicks_matrix(**clicks_params)
+    calculate_clicks_matrix(**clicks_params)    
     
     clear_cache()
