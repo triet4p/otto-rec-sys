@@ -111,7 +111,7 @@ def get_history_and_label_df(sampled_train_df: pl.DataFrame):
     # Bây giờ mới lấy unique
     history_df = history_source_df.select(['session', 'aid']).unique()
     
-    return history_df, train_ground_truth
+    return history_df, train_ground_truth, history_source_df
 
 def get_popular_items_df(sampled_train_df: pl.DataFrame):
     session_cutoffs = sampled_train_df.group_by('session').agg(
