@@ -1,3 +1,4 @@
+from typing import Any, Dict
 import numpy as np
 import polars as pl
 import lightgbm as lgb
@@ -205,7 +206,8 @@ def add_features(df: pl.DataFrame,
     
     return df
 
-def train_lgbm_model(df: pl.DataFrame, model_type: str) -> lgb.LGBMRanker:
+def train_lgbm_model(df: pl.DataFrame, model_type: str,
+                     model_params: Dict[str, Any] | None = None) -> lgb.LGBMRanker:
     """
     Chuẩn bị dữ liệu và huấn luyện một mô hình LGBMRanker.
     """
@@ -227,15 +229,18 @@ def train_lgbm_model(df: pl.DataFrame, model_type: str) -> lgb.LGBMRanker:
     groups = df.group_by('session', maintain_order=True).count()['count'].to_numpy()
     
     # --- 2.2: Huấn luyện mô hình ---
-    model = lgb.LGBMRanker(
-        objective="lambdarank",
-        metric="map",
-        n_estimators=500,
-        learning_rate=0.05,
-        num_leaves=31,
-        random_state=42,
-        n_jobs=-1,
-    )
+    if model_params is None:
+        model = lgb.LGBMRanker(
+            objective="lambdarank",
+            metric="map",
+            n_estimators=500,
+            learning_rate=0.05,
+            num_leaves=31,
+            random_state=42,
+            n_jobs=-1,
+        )
+    else:
+        model = lgb.LGBMRanker(**model_params)
     
     print("  - Fitting model...")
     model.fit(
