@@ -1,14 +1,18 @@
 import gc
 import os
+import faiss
 import numpy as np
 import polars as pl
 import tqdm
 import lightgbm as lgb
+from src.candidate_generation.gnn import generate_candidates_from_gnn
 import src.core.config as cfg
+
 
 def process_chunk(history_chunk: pl.DataFrame, 
                   popular_items_df: pl.DataFrame, # Thêm popular_items vào đây
-                  df_clicks: pl.DataFrame, df_buys: pl.DataFrame, df_buy2buy: pl.DataFrame) -> pl.DataFrame:
+                  df_clicks: pl.DataFrame, df_buys: pl.DataFrame, df_buy2buy: pl.DataFrame,
+                  embedding_df: pl.DataFrame, faiss_index: faiss.Index, idx2aid_faiss: dict) -> pl.DataFrame:
     """
     Xử lý một khối (chunk) session: tạo ứng viên từ lịch sử và co-visitation,
     sau đó tạo các đặc trưng về nguồn gốc (rank, wgt).
@@ -33,6 +37,8 @@ def process_chunk(history_chunk: pl.DataFrame,
     sessions_in_chunk = history_chunk.select('session').unique()
     candidates_popular_chunk = sessions_in_chunk.join(popular_items_df, how='cross')
     
+    candidates_gnn_chunk = generate_candidates_from_gnn(history_chunk, embedding_df, faiss_index, idx2aid_faiss)
+    
     # 4. Tổng hợp tất cả ứng viên cho chunk này
     candidates_df_chunk = pl.concat([
         candidates_history_chunk.select(['session', 'candidate_aid']),
@@ -40,6 +46,7 @@ def process_chunk(history_chunk: pl.DataFrame,
         candidates_clicks_chunk.select(['session', 'candidate_aid']),
         candidates_buys_chunk.select(['session', 'candidate_aid']),
         candidates_buy2buy_chunk.select(['session', 'candidate_aid']),
+        candidates_gnn_chunk.select(['session', 'candidate_aid'])
     ]).unique(subset=['session', 'candidate_aid'], keep='first')
     
     # 4. Tạo đặc trưng từ nguồn gốc (aggregate và join ngược lại)
@@ -61,6 +68,11 @@ def process_chunk(history_chunk: pl.DataFrame,
     candidates_df_chunk = candidates_df_chunk.join(agg_clicks_chunk, on=['session', 'candidate_aid'], how='left')
     candidates_df_chunk = candidates_df_chunk.join(agg_buys_chunk, on=['session', 'candidate_aid'], how='left')
     candidates_df_chunk = candidates_df_chunk.join(agg_buy2buy_chunk, on=['session', 'candidate_aid'], how='left')
+    candidates_df_chunk = candidates_df_chunk.join(
+        candidates_gnn_chunk.select(['session', 'candidate_aid', 'rank_gnn', 'wgt_gnn']),
+        on=['session', 'candidate_aid'],
+        how='left'
+    )
     
     return candidates_df_chunk
 

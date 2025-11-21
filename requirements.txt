@@ -5,3 +5,4 @@ tqdm
 lightgbm
 mypy
 cudf
+faiss-cpu
