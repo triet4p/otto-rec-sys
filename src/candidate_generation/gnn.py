@@ -15,7 +15,7 @@ def generate_candidates_from_gnn(
     history_with_emb = history_chunk.join(embedding_df, on='aid', how='inner')
 
     if len(history_with_emb) == 0:
-        return pl.DataFrame(schema={...}) # Trả về schema đúng
+        return pl.DataFrame(schema={'session': pl.Int32, 'candidate_aid': pl.Int32, 'rank_gnn': pl.UInt32, 'wgt_gnn': pl.Float32}) # Trả về schema đúng
 
     # --- SỬA LỖI Ở ĐÂY: TÍNH TRUNG BÌNH AN TOÀN ---
     # 1. "Trải phẳng" các vector embedding
