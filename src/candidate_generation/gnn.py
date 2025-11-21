@@ -24,7 +24,16 @@ def generate_candidates_from_gnn(
         return pl.DataFrame(schema={'session': pl.Int64, 'candidate_aid': pl.Int32, 'rank_gnn': pl.UInt16, 'wgt_gnn': pl.Float32})
 
     # 3. Chuẩn bị vector truy vấn và tìm kiếm
-    query_vectors = np.array(session_embeddings['session_embedding'].to_list(), dtype=np.float32)
+    num_sessions_in_chunk = len(session_embeddings)
+    embed_size = len(session_embeddings[0, 'session_embedding'])
+    
+    # Khởi tạo một mảng NumPy 2D rỗng
+    query_vectors = np.zeros((num_sessions_in_chunk, embed_size), dtype=np.float32)
+    
+    # Lặp và điền vào mảng
+    for i, row in enumerate(session_embeddings.iter_rows()):
+        # row[1] chính là list embedding
+        query_vectors[i, :] = row[1]
     faiss.normalize_L2(query_vectors)
     
     distances, indices = faiss_index.search(query_vectors, top_k)
