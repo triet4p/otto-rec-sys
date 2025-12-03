@@ -38,7 +38,7 @@ def process_chunk(history_chunk: pl.DataFrame,
     candidates_popular_chunk = sessions_in_chunk.join(popular_items_df, how='cross')
     
     candidates_gnn_chunk = generate_candidates_from_gnn(history_chunk, embedding_df, faiss_index, idx2aid_faiss)
-    candidates_gnn_chunk = candidates_gnn_chunk.with_columns(pl.col('session').cast(pl.Int32))
+    #candidates_gnn_chunk = candidates_gnn_chunk.with_columns(pl.col('session').cast(pl.Int32))
     # 4. Tổng hợp tất cả ứng viên cho chunk này
     candidates_df_chunk = pl.concat([
         candidates_history_chunk.select(['session', 'candidate_aid']),
