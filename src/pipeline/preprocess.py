@@ -10,9 +10,12 @@ import src.core.config as cfg
 
 
 def process_chunk(history_chunk: pl.DataFrame, 
-                  popular_items_df: pl.DataFrame, # Thêm popular_items vào đây
+                  popular_items_df: pl.DataFrame, 
                   df_clicks: pl.DataFrame, df_buys: pl.DataFrame, df_buy2buy: pl.DataFrame,
-                  embedding_df: pl.DataFrame, faiss_index: faiss.Index, idx2aid_faiss: dict) -> pl.DataFrame:
+                  use_gnn_embedding: bool = False,
+                  embedding_df: pl.DataFrame|None = None, 
+                  faiss_index: faiss.Index|None = None, 
+                  idx2aid_faiss: dict|None = None) -> pl.DataFrame:
     """
     Xử lý một khối (chunk) session: tạo ứng viên từ lịch sử và co-visitation,
     sau đó tạo các đặc trưng về nguồn gốc (rank, wgt).
@@ -37,17 +40,28 @@ def process_chunk(history_chunk: pl.DataFrame,
     sessions_in_chunk = history_chunk.select('session').unique()
     candidates_popular_chunk = sessions_in_chunk.join(popular_items_df, how='cross')
     
+<<<<<<< Updated upstream
     candidates_gnn_chunk = generate_candidates_from_gnn(history_chunk, embedding_df, faiss_index, idx2aid_faiss)
     #candidates_gnn_chunk = candidates_gnn_chunk.with_columns(pl.col('session').cast(pl.Int32))
     # 4. Tổng hợp tất cả ứng viên cho chunk này
+=======
+>>>>>>> Stashed changes
     candidates_df_chunk = pl.concat([
         candidates_history_chunk.select(['session', 'candidate_aid']),
         candidates_popular_chunk, # Thêm nguồn popular ở đây 
         candidates_clicks_chunk.select(['session', 'candidate_aid']),
         candidates_buys_chunk.select(['session', 'candidate_aid']),
         candidates_buy2buy_chunk.select(['session', 'candidate_aid']),
-        candidates_gnn_chunk.select(['session', 'candidate_aid'])
     ]).unique(subset=['session', 'candidate_aid'], keep='first')
+    
+    if use_gnn_embedding:
+        candidates_gnn_chunk = generate_candidates_from_gnn(history_chunk, embedding_df, faiss_index, idx2aid_faiss)
+        candidates_gnn_chunk = candidates_gnn_chunk.with_columns(pl.col('session').cast(pl.Int32))
+        # 4. Tổng hợp tất cả ứng viên cho chunk này
+        candidates_df_chunk = pl.concat([
+            candidates_df_chunk,
+            candidates_gnn_chunk.select(['session', 'candidate_aid'])
+        ]).unique(subset=['session', 'candidate_aid'], keep='first')
     
     # 4. Tạo đặc trưng từ nguồn gốc (aggregate và join ngược lại)
     # Đặc trưng từ lịch sử

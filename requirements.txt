@@ -1,4 +1,4 @@
-numpy
+numpy<2.0
 pandas
 polars
 tqdm
@@ -6,3 +6,6 @@ lightgbm
 mypy
 cudf
 faiss-cpu
+scikit-learn
+torch
+torch_geometric

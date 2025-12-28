@@ -1,6 +1,15 @@
 import numpy as np
 import polars as pl
 import faiss
+import random
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import Dataset
+import torch_geometric.nn as pyg_nn
+from torch_geometric.utils import to_scipy_sparse_matrix
+from torch_geometric.nn.conv import GCNConv
+from torch_geometric.nn.conv.gcn_conv import gcn_norm
 
 def generate_candidates_from_gnn(
     history_chunk: pl.DataFrame,
@@ -71,3 +80,83 @@ def generate_candidates_from_gnn(
         'rank_gnn': ranks,
         'wgt_gnn': scores
     })
+    
+class BPRDataset(Dataset):
+    def __init__(self, interaction_pairs, all_item_indices, user_pos_items_dict, num_aids):
+        """
+        Khởi tạo Dataset cho BPR Loss.
+        
+        Args:
+            interaction_pairs (list): List các tuple (user_idx, positive_item_idx).
+            all_item_indices (set): Set chứa tất cả các item index.
+            user_pos_items_dict (dict): Dict: user_idx -> set(positive_item_indices).
+            num_aids (int): Tổng số lượng item.
+        """
+        self.interaction_pairs = interaction_pairs
+        self.all_item_indices = list(all_item_indices) # Chuyển sang list để có thể index
+        self.user_pos_items = user_pos_items_dict
+        self.num_aids = num_aids
+
+    def __len__(self):
+        return len(self.interaction_pairs)
+
+    def __getitem__(self, index):
+        # 1. Lấy một cặp tương tác dương (user, positive_item)
+        user_idx, pos_item_idx = self.interaction_pairs[index]
+        
+        # 2. Lấy mẫu một item âm (negative_item)
+        neg_item_idx = None
+        while neg_item_idx is None or neg_item_idx in self.user_pos_items[user_idx]:
+            # Lấy ngẫu nhiên một item từ toàn bộ danh sách
+            neg_item_idx = random.choice(self.all_item_indices)
+            
+        return user_idx, pos_item_idx, neg_item_idx
+    
+class LightGCN(nn.Module):
+    def __init__(self, num_users, num_items, embed_dim=32, num_layers=3):
+        super().__init__()
+        self.num_users = num_users
+        self.num_items = num_items
+        self.embedding = nn.Embedding(num_users + num_items, embed_dim)
+        nn.init.xavier_uniform_(self.embedding.weight)
+        
+        # Chúng ta vẫn cần khởi tạo các lớp GCNConv,
+        # mặc dù chỉ dùng phương thức propagate của chúng.
+        self.convs = nn.ModuleList([GCNConv(embed_dim, embed_dim) for _ in range(num_layers)])
+
+    def forward(self, edge_index):
+        # Lấy embedding khởi tạo
+        x0 = self.embedding.weight
+        all_layer_embeddings = [x0]
+        
+        # Chuẩn hóa ma trận kề một lần duy nhất
+        # Đây là bước quan trọng nhất để mô phỏng LightGCN
+        norm_edge_index, norm_edge_weight = gcn_norm(
+            edge_index, 
+            num_nodes=self.num_users + self.num_items
+        )
+
+        x = x0
+        for conv in self.convs:
+            # GỌI TRỰC TIẾP `propagate` ĐỂ THỰC HIỆN PHÉP TỔNG HỢP HÀNG XÓM
+            # mà không cần qua lớp Linear `conv.lin`
+            x = conv.propagate(norm_edge_index, x=x, edge_weight=norm_edge_weight)
+            all_layer_embeddings.append(x)
+        
+        final_embedding = torch.mean(torch.stack(all_layer_embeddings, dim=0), dim=0)
+        
+        users_emb, items_emb = torch.split(final_embedding, [self.num_users, self.num_items])
+        
+        return users_emb, items_emb
+    
+def bpr_loss(users_emb, pos_items_emb, neg_items_emb):
+    # Đảm bảo các tensor có ít nhất 2 chiều
+    #print(users_emb.dim(), users_emb)
+    if users_emb.dim() == 1: users_emb = users_emb.unsqueeze(0)
+    if pos_items_emb.dim() == 1: pos_items_emb = pos_items_emb.unsqueeze(0)
+    if neg_items_emb.dim() == 1: neg_items_emb = neg_items_emb.unsqueeze(0)
+        
+    pos_scores = torch.sum(users_emb * pos_items_emb, dim=1)
+    neg_scores = torch.sum(users_emb * neg_items_emb, dim=1)
+    
+    return -torch.mean(F.logsigmoid(pos_scores - neg_scores)) # Dùng F.logsigmoid ổn định hơn

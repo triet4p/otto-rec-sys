@@ -5,7 +5,19 @@ description = "Local dev setup for Otto Rec sys"
 authors = [
     { name = "Triet", email = "you@example.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
+dependencies = [
+    "faiss-cpu>=1.13.2",
+    "lightgbm>=4.6.0",
+    "mypy>=1.19.1",
+    "numpy<2.0",
+    "pandas>=2.3.3",
+    "polars>=1.36.1",
+    "scikit-learn>=1.8.0",
+    "torch>=2.9.1",
+    "torch-geometric>=2.7.0",
+    "tqdm>=4.67.1",
+]
 
 # -------------------
 # Mypy configuration
@@ -13,7 +25,7 @@ requires-python = ">=3.11"
 [tool.mypy]
 mypy_path = "./stubs"        # nơi chứa stub (vd: stubs/cudf/)
 ignore_missing_imports = true
-python_version = "3.11"
+python_version = "3.13"
 warn_unused_ignores = true
 strict_optional = true
 
@@ -22,7 +34,7 @@ strict_optional = true
 # -------------------
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py313']
 
 # -------------------
 # (Tùy chọn) Ruff linter
