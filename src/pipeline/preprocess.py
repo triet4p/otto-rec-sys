@@ -40,12 +40,9 @@ def process_chunk(history_chunk: pl.DataFrame,
     sessions_in_chunk = history_chunk.select('session').unique()
     candidates_popular_chunk = sessions_in_chunk.join(popular_items_df, how='cross')
     
-<<<<<<< Updated upstream
     candidates_gnn_chunk = generate_candidates_from_gnn(history_chunk, embedding_df, faiss_index, idx2aid_faiss)
     #candidates_gnn_chunk = candidates_gnn_chunk.with_columns(pl.col('session').cast(pl.Int32))
     # 4. Tổng hợp tất cả ứng viên cho chunk này
-=======
->>>>>>> Stashed changes
     candidates_df_chunk = pl.concat([
         candidates_history_chunk.select(['session', 'candidate_aid']),
         candidates_popular_chunk, # Thêm nguồn popular ở đây 
